@@ -5,25 +5,21 @@ window.onload = function(){
     var container = document.getElementById("container");
     container.addEventListener("click", utilities.delegate, false);
 }
-//QUESTION: why doesn't jquery ajax module recognize the anonymous version of this function?
-function jsoncallback(json){
-    var MAX_LENGTH = 6;
+
+function handleTweets(json){
+    var UNIQUE_CARDS = 6;
     var txt='';
     var data=[];
-    //shuffle tweets. fisher yates suffle
-    for (var i = json.length - 1; i > 0; i--) {
-        var j = Math.floor(Math.random() * (i + 1));
-        var temp = json[i];
-        json[i] = json[j];
-        json[j] = temp;
-    }
-    if(json.length>=MAX_LENGTH){
-        for(var i=0; i<MAX_LENGTH; i++){
+
+    utilities.shuffle(json);
+
+    if(json.length>=UNIQUE_CARDS){
+        for(var i=0; i<UNIQUE_CARDS; i++){
             txt = json[i].text;
             var obj = {text:txt,count:2};
             data.push(obj);
         }
-        board.load(data, MAX_LENGTH);
+        board.load(data, UNIQUE_CARDS);
         document.getElementById("username").classList.toggle("hide");
         document.getElementById("board").classList.remove("hide");
         document.getElementById("board").classList.add("show-table");
@@ -35,10 +31,10 @@ function jsoncallback(json){
         console.log("This user doesn't exist. Choose another username");
     }
     else{
-        //maybe make an error object that routes errors accordingly?
         console.log('Bummer, not enough tweets to play. Choose another username.');
     }
 }
+
 var utilities = {
     /**
     *Clears/resets all input elements within the document
@@ -49,6 +45,18 @@ var utilities = {
             input_elements[i].value = '';
         }
     },
+
+    /*shuffle tweets. fisher yates suffle*/
+    shuffle: function(list){
+        for (var i = list.length - 1; i > 0; i--) {
+            var j = Math.floor(Math.random() * (i + 1));
+            var temp = list[i];
+            list[i] = list[j];
+            list[j] = temp;
+        }
+        return list
+    },
+
     /**
     *Implements event delegation for clicks within the container...the game board
     */
@@ -68,7 +76,7 @@ var utilities = {
                 //pause before resetting clicks...
                 setTimeout(function(){
                     board.resetClicks();
-                    //if number of matches found == MAX_LENGTH, the game has ended, ask to reload board...
+                    //if number of matches found == UNIQUE_CARDS, the game has ended, ask to reload board...
                     if(board.number_of_matches===board.max_length){
                         document.getElementById("username").classList.toggle("z-index");
                         document.getElementById("play-again").classList.toggle("hide");
@@ -77,16 +85,17 @@ var utilities = {
             }
         }
     },
+
     /**
         *Makes a jsonp ajax call to twitter's api for the username provided
     */
-    executeAjaxHandler: function(username){
+    handleTweets: function(username){
         var url = "https://api.twitter.com/1/statuses/user_timeline.json?screen_name="+username+"&count=20";
         $.ajax({
                   url: url,
                   dataType: "jsonp",
                   jsonp : "callback",
-                  jsonpCallback: "jsoncallback"
+                  jsonpCallback: "handleTweets"
             });
     },
     /**
@@ -102,16 +111,15 @@ var utilities = {
                 throw new UserException("Must enter username to play.");
             }
             else{
-                //document.getElementById("message-drawer").style.display = 'none';
                 msg_obj.getMessageDrawer().classList.add("hide");
-                utilities.executeAjaxHandler(username);
+                utilities.handleTweets(username);
             }
         }
         catch(err){
             console.log(err.name);
-            /*HERE*/msg_obj.getMessageDrawer().getElementsByClassName("message-text")[0];
-            /*HERE*/document.getElementsByClassName("message-text")[0].innerHTML = err.msg;
-            msg_obj.getMessageDrawer().classList.remove(err.class_name);//QUESTION: is this line absolutely unecessary? is it better to do the line below? i added this line to avoid accessing the dom so much...
+            msg_obj.getMessageDrawer().getElementsByClassName("message-text")[0];
+            document.getElementsByClassName("message-text")[0].innerHTML = err.msg;
+            msg_obj.getMessageDrawer().classList.remove(err.class_name);
         }
     }
 }
@@ -120,22 +128,25 @@ var board = {
     card_count:0,
     selectedCards:[],
     cards:[],
-    BOARD_LENGTH:4,
-    BOARD_WIDTH:3,
+    ROW:4,
+    COL:3,
     number_of_matches:0,
+
     /**
     *Loads the game board with data/returned tweets.
     */
-    load : function (data, MAX_LENGTH){
-        this.max_length = MAX_LENGTH;
+    load : function (data, UNIQUE_CARDS){
+        this.max_length = UNIQUE_CARDS;
         var random_num = 0;
         var filled_cell = true;
-        this.game_board = document.getElementById("board");//would be better to actually access this by class name?
-        for(var i = 0; i<this.BOARD_LENGTH; i++){
+        this.game_board = document.getElementById("board");
+        
+        for(var i = 0; i<this.ROW; i++){
             var row = document.createElement("div");
             row.className = "div-row";
             this.game_board.appendChild(row);
-            for(var j = 0; j<this.BOARD_WIDTH; j++){
+            for(var j = 0; j<this.COL; j++){
+
                 //loop until a cell is filled with an item from the data array
                 while(filled_cell){
                 /*if the count value of the randomly generated index for data is greater than 0, fill the board with that info
@@ -154,12 +165,14 @@ var board = {
             }
         }
     },
+
     /**
     *Returns a randomly generated number btwn the values of 0 and the length of the data array.
     */
     getRandomNum: function (){
         return Math.floor((Math.random()*(this.max_length)));
     },
+
     /**
     *Resets the number of "board" clicks to zero, re-initializes selectedCards value and adjust css
     */
@@ -172,18 +185,21 @@ var board = {
         this.click_num = 0;
         this.selectedCards = [];
     },
+
     /**
     *Increment board click value by one.
     */
     incrementClicks: function(){
         this.click_num++;
     },
+
     /**
     *Add the clicked element to the board's current_click array.
     */
     recordClick: function(e){
         this.selectedCards.push(e.target);
     },
+
     /**
     *Compare the values/text of the elements within the board's selectedCards array. If equal, remove card from board, otherwise
     *add the click event listener back to the elements.
@@ -202,11 +218,11 @@ var board = {
                 var card = this.selectedCards[i];
                 //add the listener back to the card
                 card.addEventListener("click", board.cards[card.id].listener, false);
-                // QUESTION: is there anyway to obtain the object that the markup is attached to?
             }
             console.log("Welp :/");
         }
     },
+
     /**
     *Manipulates css to simulate a "removed" card
     */
@@ -223,8 +239,9 @@ var UserException = function(msg){
     this.name = "UserException";
     this.class_name = "hide";
 }
-var Card = function(text) {
-        var div = document.createElement("div");//should div have this prepended on it?
+
+var Card = function(text){
+        var div = document.createElement("div");
         div.innerHTML = text;
         div.classList.add("div-cell");
         div.classList.add("off");
@@ -240,25 +257,31 @@ var Card = function(text) {
             this.removeEventListener("click", listener, false);
         };
         this.listener = listener;
-        //TODO: understand the differences btwn the above code and below code
-        /*this.listener = function (e) {
-          board.incrementClicks();
-          board.recordClick(text, e);
-          this.removeEventListener("click", this.listener, false);
-        };*/
         this.markup.addEventListener("click", this.listener, false);
 }
+
 Card.prototype = {
     getCardMarkup: function(){
         return this.markup
     }
 }
+
 var Message = function(){
     var message_drawer = document.getElementById("message-drawer");
     this.message_drawer = message_drawer;
 }
+
 Message.prototype = {
     getMessageDrawer:function(){
         return this.message_drawer;
     }
 }
+
+/*TODO: 
+-reomve "Message object and prototype"
+-remove "UserException function"
+-duplicate first x-number of tweets instead of using counter to a loop to fill cells. Something like so:
+        tweets = data.shuffle(data);
+        tweets = tweets.slice(0,UNIQUE_CARDS);
+        tweets = this.shuffle(tweets.concat(tweets));
+*/
