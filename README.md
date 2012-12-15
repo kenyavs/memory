@@ -9,5 +9,5 @@ In the inner memory dirctory, load memory.html within a browser. Like so: file:/
 
 ![alt text](https://raw.github.com/kenyavs/structured_memory/master/images/memory.png "Title")
  
-Known Issues:
+<h2>Known Issues:</h2>
 Jsonp doesn't handle error callbacks. Therefore, twitter usernames that are either private or don't exist fail silently. Workarounds are in progress and are welcomed.
